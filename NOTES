@@ -1,0 +1,7 @@
+it was printing the string and adding the PATH= to it....
+
+i need to make file one should be linked with file two 
+fd{0} will be stdin 
+fd(1) will be stdout
+
+we will write to the stdout adn it should be redericetd to fd{1}
