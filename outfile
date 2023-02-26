@@ -1,0 +1,45 @@
+
+
+
+
+
+
+
+
+
+void execute(char *argv, char **env, int fd)
+{
+    char *path = get_path_from_env(env);
+    char **flags = NULL;
+    char *tmp = NULL;
+
+    if (argv && argv[0] && argv[0] != ' ')
+    {
+        flags = ft_split(argv, ' ');
+        if (path && flags && argv[0] != ' ')
+        {
+            char **dirs = ft_split(path, ':');
+            tmp = find_command_path(dirs, flags[0]);
+            free_2d_array(dirs);
+        }
+        else if (flags)
+        {
+            tmp = flags[0];
+        }
+        free_2d_array(flags);
+    }
+
+    if (!tmp)
+    {
+        free(path);
+        exit((write(2, "Error: Command not found\n", 25)) * 0 + 1);
+    }
+
+    close(fd);
+    if (execve(tmp, flags, env) < 0)
+    {
+        free(tmp);
+        exit((write(2, "Error: Executing the command failed\n", 37)) * 0 + 1);
+    }
+    free(tmp);
+}

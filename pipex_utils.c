@@ -6,92 +6,113 @@
 /*   By: mofaisal <mofaisal@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/02/21 22:04:20 by mofaisal          #+#    #+#             */
-/*   Updated: 2023/02/21 22:26:29 by mofaisal         ###   ########.fr       */
+/*   Updated: 2023/02/26 18:15:10 by mofaisal         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "pipex.h"
 
-void free_string_array(char **array)
+char	*get_path_from_env(char **env)
 {
-    int i;
+	int	i;
 
-    i = 0;
-    while (array[i] != NULL)
-    {
-        free(array[i]);
-        i++;
-    }
-    free (array);
+	i = 0;
+	while (env[i])
+	{
+		if ((ft_strncmp("PATH=", env[i], 5) == 0))
+			return (ft_strdup((env[i] + 5)));
+		i++;
+	}
+	return (NULL);
 }
 
-void open_file_and_redirect_input(char *file_path) 
+char	*find_command_existance(char **dir, char *cmd)
 {
-    int fd;
+	char	*joinedstr;
+	int		i;
 
-    fd = open(file_path, O_RDONLY);
-    if (fd == -1)
-    {
-        perror("Error while opening the file");
-        exit(1);
-    }
-    dup2(fd, STDIN_FILENO);
+	i = 0;
+	while (dir[i])
+	{
+		joinedstr = ft_strjoin(dir[i], cmd);
+		if (access(joinedstr, F_OK) == 0)
+			return (free_string_array(dir), (free(cmd)), joinedstr);
+		free(joinedstr);
+		i++;
+	}
+	return (free(cmd), NULL);
 }
 
-char *get_path_from_env(char **env) 
+char	*find_command_path(char **directories, char *command)
 {
-    int i;
+	int		i;
+	int		j;
+	char	*cmd;
 
-    i = 0;
-    while (env[i])
-    {
-        if ((strncmp("PATH=", env[i], 5) == 0))
-            return strdup((env[i] + 5));
-        i++;
-    }
-    return NULL;
+	i = 0;
+	j = 1;
+	cmd = malloc(ft_strlen(command) + 2);
+	cmd[0] = '/';
+	i = 0;
+	while (command[i] && command[i] != ' ')
+		cmd[j++] = command[i++];
+	cmd[ft_strlen(command) + 1] = '\0';
+	i = 0;
+	if (access(command, F_OK) == 0)
+		return (command);
+	return (find_command_existance(directories, cmd));
+	i = -1;
+	free_string_array(directories);
+	return (NULL);
 }
 
-char *find_command_path(char **directories, char *command) 
+void	check_path(t_pipe *pipe, char *argv)
 {
-    char *joinedstr;
-    int i;
-
-    i = 0;
-    while (directories[i])
-    {
-        char *dir_path = directories[i];
-        int dir_len = strlen(dir_path);
-        int cmd_len = strlen(command);
-        joinedstr = malloc(dir_len + cmd_len + 2);
-        if (!joinedstr)
-        {
-            perror("Error while allocating memory");
-            exit(1);
-        }
-        strcpy(joinedstr, dir_path);
-        joinedstr[dir_len] = '/';
-        strcpy(joinedstr + dir_len + 1, command);
-        if (access(joinedstr, F_OK) == 0)
-        {
-            return joinedstr;
-        }
-        free(joinedstr);
-        i++;
-    }
-    return NULL;
+	if (!pipe->path)
+	{
+		pipe->flags = ft_split(argv, ' ');
+		if (!pipe->flags)
+			pipe->tmp = NULL;
+		else
+			pipe->tmp = pipe->flags[0];
+	}
+	else
+	{
+		pipe->flags = ft_split(argv, ' ');
+		if (!pipe->flags || argv[0] == ' ')
+			pipe->tmp = NULL;
+		else
+		{
+			pipe->dirs = ft_split(pipe->path, ':');
+			pipe->tmp = find_command_path(pipe->dirs, pipe->flags[0]);
+		}
+	}
 }
 
-void redirect_output_to_file(char *command, char *output_file_path, char *command_path)
+void	execute(char *argv, char **env, int fd)
 {
-    int fd;
+	t_pipe	pipe;
 
-    fd = open(output_file_path, O_CREAT | O_WRONLY | O_TRUNC, 0666);
-    if (fd == -1)
-    {
-        perror("Error while opening the output file");
-        exit(1);
-    }
-    dup2(fd, STDOUT_FILENO);
-    execl(command_path, command, NULL);
+	pipe.tmp = NULL;
+	pipe.path = get_path_from_env(env);
+	if (argv && argv[0] && argv[0] != ' ')
+	{
+		check_path(&pipe, argv);
+		close(fd);
+		if (pipe.tmp)
+		{
+			if (execve(pipe.tmp, pipe.flags, env) < 0)
+			{
+				free(pipe.tmp);
+				exit((write(2, STRING2, ft_strlen(STRING2))) * 0 + 1);
+			}
+		}
+		else
+		{
+			free(pipe.tmp);
+			exit((write(2, STRING1, ft_strlen(STRING1))) * 0 + 1);
+		}
+	}
+	free(pipe.path);
+	exit((write(2, STRING1, ft_strlen(STRING1))) * 0 + 1);
 }
